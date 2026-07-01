@@ -1,0 +1,54 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production Build Assets
+frontend/dist/
+dist/
+
+# Local databases & storage
+*.db
+*.sqlite3
+milvus_local.db/
+test_milvus.db/
+test_conn.db/
+backend.db
+test_backend.db
+
+# User Uploads and PDFs
+uploads/
+pdf/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+ingestion_error.log
+
+# IDEs & System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.gemini/
+.agents/

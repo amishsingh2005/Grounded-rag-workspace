@@ -1,0 +1,100 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Milvus stack  (etcd → minio → milvus-standalone)  +  your RAG app
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── 1. etcd ─────────────────────────────────────────────────────────────────
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.25
+    container_name: milvus-etcd
+    restart: unless-stopped
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    command: >
+      etcd
+      -advertise-client-urls=http://127.0.0.1:2379
+      -listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - etcd_data:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ── 2. MinIO ─────────────────────────────────────────────────────────────────
+  milvus-minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: milvus-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data --console-address ":9001"
+    volumes:
+      - minio_data:/minio_data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ── 3. Milvus standalone ─────────────────────────────────────────────────────
+  milvus-standalone:
+    image: milvusdb/milvus:v3.0-beta
+    container_name: milvus-standalone
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      milvus-etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+
+  # ── 4. Your RAG application ───────────────────────────────────────────────────
+  rag-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-app
+    env_file: .env                        # loads GOOGLE_API_KEY
+    environment:
+      MILVUS_HOST: milvus-standalone      # service name = hostname inside Docker
+      DATABASE_URL: sqlite:////app/data/backend.db
+      JWT_SECRET: "change-this-to-a-secure-random-value-in-production"
+    ports:
+      - "8000:8000"
+    depends_on:
+      milvus-standalone:
+        condition: service_healthy        # wait until Milvus is ready
+    volumes:
+      - ./uploads:/app/uploads            # persist user uploads
+      - ./backend_data:/app/data          # persist SQLite database file
+
+volumes:
+  etcd_data:
+  minio_data:
+  milvus_data:
