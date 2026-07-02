@@ -541,9 +541,7 @@ Distributed under the MIT License. See the [LICENSE](LICENSE) file for more info
 
 **Amish Singh**
 
-* [GitHub](https://github.com/amish-singh-placeholder)
-* [LinkedIn](https://linkedin.com/in/amish-singh-placeholder)
-* [Portfolio](https://amish-singh-portfolio-placeholder)
-* [Email](mailto:amish.singh.placeholder@gmail.com)
+* [GitHub](https://github.com/amishsingh2005)
+* [Email](mailto:amishsingh2005@gmail.com)
 
 *Developed as a high-fidelity showcase of enterprise Retrieval-Augmented Generation capabilities.*
