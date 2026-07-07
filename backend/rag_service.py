@@ -40,7 +40,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_milvus import Milvus
 from langchain.chat_models import init_chat_model
 
-import models
+from . import models
 
 # Load env variables
 MILVUS_URI = os.getenv("MILVUS_URI", "")
@@ -158,12 +158,25 @@ def delete_document_chunks(doc_id: int, user_id: int):
 
 import json
 import re
+from langchain_community.tools import DuckDuckGoSearchResults
+
+def search_web(query: str) -> str:
+    """Perform web search as fallback when no document chunks are relevant."""
+    try:
+        logger.info(f"[WEB_SEARCH] Searching web for: {query[:100]}")
+        search = DuckDuckGoSearchResults(num_results=5)
+        results_str = search.run(query)
+        logger.info(f"[WEB_SEARCH] Found web results")
+        return results_str
+    except Exception as e:
+        logger.error(f"[WEB_SEARCH] Error during web search: {e}", exc_info=True)
+        return "No web results found."
 
 # ════════════════════════════════════════════════════════════════════════════════
 # SYNCHRONOUS RAG QUERY FUNCTION (Primary interface for FastAPI endpoint)
 # ════════════════════════════════════════════════════════════════════════════════
 
-def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float = 0.3):
+def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float = 0.75):
     """
     Synchronous RAG query function that retrieves relevant chunks and generates answers.
     
@@ -173,7 +186,7 @@ def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float
         query: User's question
         user_id: User ID for document filtering
         k: Number of chunks to retrieve (default: 10)
-        similarity_threshold: Minimum L2-normalized similarity score (0-1, default: 0.3)
+        similarity_threshold: Minimum similarity score (0-1, default: 0.75)
         
     Returns:
         Tuple of (answer: str, sources: List[dict])
@@ -187,10 +200,7 @@ def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float
         vector_store = get_vector_store()
         logger.info(f"[RAG] Vector store connected")
         
-        # Retrieve chunks with scores, filtered by user_id
-        # NOTE: Milvus Lite uses L2 (Euclidean) distance — lower score = more similar.
-        # We convert L2 distance -> normalized similarity via: sim = 1 / (1 + L2_distance)
-        # This maps [0, ∞) -> (0, 1] where 1.0 = perfect match.
+        # Retrieve similarity chunks with scores, filtered by user_id
         logger.info(f"[RAG] Searching for {k} most similar chunks (threshold: {similarity_threshold})")
         results = vector_store.similarity_search_with_score(
             query=query, 
@@ -203,36 +213,49 @@ def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float
         sources = []
         
         for i, (doc, score) in enumerate(results):
-            # Convert L2 distance to similarity score in range (0, 1]
-            similarity = 1.0 / (1.0 + float(score))
-            logger.info(f"[RAG] Chunk {i+1}: L2_score={score:.4f} -> similarity={similarity:.4f}, threshold={similarity_threshold}")
+            similarity = 1 - float(score)
+            logger.debug(f"[RAG] Chunk {i+1}: similarity={similarity:.4f}, threshold={similarity_threshold}")
             if similarity >= similarity_threshold:
                 valid_chunks.append(doc.page_content)
                 sources.append({
                     "content": doc.page_content,
                     "source_file": doc.metadata.get("source_file", "unknown"),
-                    "score": similarity
+                    "score": float(score)
                 })
         
         logger.info(f"[RAG] Valid chunks after similarity filtering: {len(valid_chunks)}/{len(results)}")
         
-        # If no valid chunks found in the document, fall back to Gemini's general knowledge
+        # If no valid chunks, fall back to web search
         if not valid_chunks:
-            logger.warning(f"[RAG] No valid chunks found (similarity < {similarity_threshold}), falling back to Gemini general knowledge")
+            logger.warning(f"[RAG] No valid chunks found (similarity < {similarity_threshold}), using web search")
+            web_results_str = search_web(query)
             
-            gemini_sources = [{
-                "content": "Answer generated from Gemini's built-in general knowledge (no matching document chunks found).",
-                "source_file": "__gemini_general__",
-                "score": -1.0  # Special sentinel: -1.0 means "Gemini general knowledge"
-            }]
+            web_sources = []
+            matches = re.findall(r"\[snippet:\s*(.*?),\s*title:\s*(.*?),\s*link:\s*(.*?)\]", web_results_str)
+            if matches:
+                for snippet, title, link in matches:
+                    web_sources.append({
+                        "content": snippet,
+                        "url": link,
+                        "source_file": title,
+                        "score": 0.0
+                    })
+            else:
+                web_sources.append({
+                    "content": web_results_str,
+                    "url": "https://duckduckgo.com",
+                    "source_file": "Web Search Results",
+                    "score": 0.0
+                })
             
+            logger.info(f"[RAG] Generating answer from web search results")
             model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
-            prompt = f"""You are a knowledgeable AI assistant.
+            prompt = f"""You are a helpful AI assistant.
+        
+Answer the user's question ONLY using the provided web search context.
 
-The user asked a question that was not covered by any of their uploaded documents.
-Answer the question using your own general knowledge. Be helpful, accurate, and concise.
-If the topic is sensitive or requires up-to-date information, mention that your knowledge
-has a training cutoff and advise the user to verify from authoritative sources.
+Web Search Context:
+{web_results_str}
 
 Question:
 {query}
@@ -240,21 +263,18 @@ Question:
 Answer:
 """
             response = model.invoke(prompt)
-            logger.info(f"[RAG] Answer generated from Gemini general knowledge")
-            return response.content, gemini_sources
+            logger.info(f"[RAG] Answer generated from web search")
+            return response.content, web_sources
         
-        # Generate answer using document chunks, with Gemini allowed to supplement
+        # Generate answer using document chunks
         logger.info(f"[RAG] Generating answer from {len(valid_chunks)} document chunks")
         all_chunks = "\n".join(valid_chunks)
         model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
-        prompt = f"""You are a helpful AI assistant with access to the user's uploaded documents.
+        prompt = f"""You are a helpful AI assistant.
 
-Primarily answer the user's question using the document context below.
-If the context only partially answers the question, you may supplement your answer
-with your own general knowledge — but clearly indicate which parts come from the
-documents and which come from your general knowledge.
+Answer the user's question ONLY using the context below.
 
-Document Context:
+Context:
 {all_chunks}
 
 Question:
@@ -269,7 +289,6 @@ Answer:
     except Exception as e:
         logger.error(f"[RAG] Error during query execution: {str(e)}", exc_info=True)
         raise
-
 
 
 # ════════════════════════════════════════════════════════════════════════════════

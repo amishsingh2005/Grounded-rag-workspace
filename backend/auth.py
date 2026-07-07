@@ -5,9 +5,9 @@ import jwt
 import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import models
-import database
-import schemas
+from . import models
+from . import database
+from . import schemas
 from sqlalchemy.orm import Session
 
 # Secret configuration
