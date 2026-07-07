@@ -31,17 +31,14 @@ async def upload_document(
     db: Session = Depends(database.get_db)
 ):
     try:
-        logger.info(f"[UPLOAD] New upload request - user_id={current_user.id}, filename={file.filename}")
-        
         if not file.filename.endswith(".pdf"):
-            logger.warning(f"[UPLOAD] Rejected: Non-PDF extension - {file.filename}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid file extension. Only .pdf files are supported. Received: {file.filename}"
             )
         
         if file.content_type not in ALLOWED_MIME_TYPES:
-            logger.warning(f"[UPLOAD] Unusual MIME type: {file.content_type}. Expected: application/pdf. Will proceed with caution.")
+            logger.warning(f"[UPLOAD] Unusual MIME type: {file.content_type} for {file.filename}")
 
         file_uuid = f"{current_user.id}_{int(time.time())}_{file.filename}"
         safe_filename = "".join(c for c in file_uuid if c.isalnum() or c in "._-")

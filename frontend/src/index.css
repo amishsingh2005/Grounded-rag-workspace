@@ -140,7 +140,6 @@ body {
 }
 .citations-list {
   display: flex;
-  flex-col: column;
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;

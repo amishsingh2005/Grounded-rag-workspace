@@ -3,12 +3,10 @@ langchain-text-splitters
 langchain-milvus
 pymilvus[milvus_lite]
 python-dotenv
-tiktoken
 google-generativeai
 langchain-google-genai
 langchain
 pymupdf
-pypdf
 fastapi
 uvicorn[standard]
 sqlalchemy

@@ -2,15 +2,8 @@ import React, { useRef } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { AlertCircle, RotateCcw, CloudUpload, LoaderCircle, FolderOpen, Files, CheckCircle2, FileText, FileX, Trash2, ArrowRight, MessageCircle, X, Circle, Check, Blocks, Binary } from 'lucide-react';
-
-const formatSize = (bytes) => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};
+import { AlertCircle, RotateCcw, CloudUpload, LoaderCircle, FolderOpen, Files, CheckCircle2, FileText, FileX, Trash2, ArrowRight, MessageCircle, X, XCircle, Circle, Check, Blocks, Binary } from 'lucide-react';
+import { formatSize } from '../utils';
 
 export default function Dashboard({ 
   documents, 

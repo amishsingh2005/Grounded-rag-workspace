@@ -15,3 +15,28 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Database & logs
+*.db
+*.log
+milvus_local.db/
+test_milvus.db/
+test_conn.db/
+
+# Runtime data
+uploads/
+pdf/
+
+# Frontend dev
+frontend/node_modules/
+frontend/.gitignore
+
+# Docs & assets (not needed in container)
+screenshots/
+stitch_assets/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
