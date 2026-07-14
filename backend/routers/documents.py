@@ -1,10 +1,12 @@
 import logging
 import shutil
 import time
+import io
 from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
+from pypdf import PdfReader
 
 from .. import models, schemas, database, rag_service
 
@@ -28,21 +30,48 @@ async def upload_document(
                 detail=f"Invalid file extension. Only .pdf files are supported. Received: {file.filename}"
             )
 
+        # Read file content into memory for validation before saving
+        file_bytes = await file.read()
+
+        if len(file_bytes) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty. Please provide a valid PDF."
+            )
+
+        # Validate PDF magic header
+        if not file_bytes[:5] == b'%PDF-':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid PDF file. The file does not have a valid PDF header."
+            )
+
+        # Validate that the PDF is readable and has at least one page
+        try:
+            reader = PdfReader(io.BytesIO(file_bytes))
+            if len(reader.pages) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="PDF file has no pages. Please provide a valid PDF with content."
+                )
+        except HTTPException:
+            raise
+        except Exception as pdf_err:
+            logger.warning(f"[UPLOAD] PDF validation failed for {file.filename}: {pdf_err}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Corrupt or unreadable PDF file. Please ensure the file is a valid PDF document."
+            )
+
+        # Save the validated file to disk
         file_uuid = f"{int(time.time())}_{file.filename}"
         safe_filename = "".join(c for c in file_uuid if c.isalnum() or c in "._-")
         filepath = UPLOAD_DIR / safe_filename
 
         with filepath.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_bytes)
 
         file_size = filepath.stat().st_size
-
-        if file_size == 0:
-            filepath.unlink()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded file is empty. Please provide a valid PDF."
-            )
 
         db_doc = models.Document(
             filename=file.filename,

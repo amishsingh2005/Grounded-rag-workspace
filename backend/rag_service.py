@@ -89,6 +89,7 @@ def _build_prompt(context: str, query: str, context_label: str = "Context") -> s
     return f"""You are a helpful AI assistant.
 
 Answer the user's question ONLY using the provided {context_label.lower()}.
+If the answer is not contained in the {context_label.lower()}, reply EXACTLY and ONLY with: INSUFFICIENT_CONTEXT
 
 {context_label}:
 {context}
@@ -244,6 +245,10 @@ def query_rag(query: str, k: int = 10, similarity_threshold: float = 0.75):
         model = get_chat_model()
         prompt = _build_prompt(all_chunks, query)
         response = model.invoke(prompt)
+        
+        if "INSUFFICIENT_CONTEXT" in response.content.upper():
+            return search_web_gemini(query)
+            
         return response.content, sources
 
     except Exception as e:
@@ -304,10 +309,44 @@ def query_rag_stream(query: str, k: int = 10, similarity_threshold: float = 0.75
         model = get_chat_model()
         prompt = _build_prompt(all_chunks, query)
 
+        buffer = ""
+        is_buffering = True
+        sent_sources = False
+
         for chunk in model.stream(prompt):
             token = chunk.content
             if token:
-                yield f"event: chunk\ndata: {json.dumps(token)}\n\n"
+                if is_buffering:
+                    buffer += token
+                    if "INSUFFICIENT_CONTEXT".startswith(buffer.upper().strip()):
+                        pass
+                    elif "INSUFFICIENT_CONTEXT" in buffer.upper():
+                        break
+                    else:
+                        is_buffering = False
+                        sent_sources = True
+                        yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
+                        yield f"event: chunk\ndata: {json.dumps(buffer)}\n\n"
+                else:
+                    yield f"event: chunk\ndata: {json.dumps(token)}\n\n"
+
+        if is_buffering and "INSUFFICIENT_CONTEXT" in buffer.upper():
+            answer, web_sources = search_web_gemini(query)
+            yield f"event: sources\ndata: {json.dumps(web_sources)}\n\n"
+            chunk_size = 4
+            words = answer.split(" ")
+            for i in range(0, len(words), chunk_size):
+                t = " ".join(words[i:i + chunk_size])
+                if i > 0:
+                    t = " " + t
+                yield f"event: chunk\ndata: {json.dumps(t)}\n\n"
+            yield "event: done\ndata: {}\n\n"
+            return
+        elif is_buffering:
+            if not sent_sources:
+                yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
+            if buffer:
+                yield f"event: chunk\ndata: {json.dumps(buffer)}\n\n"
 
         yield "event: done\ndata: {}\n\n"
 

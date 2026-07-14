@@ -35,7 +35,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, restrict this to specific origins
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -74,3 +74,18 @@ else:
             "message": "FastAPI RAG Backend is running. Frontend has not been built yet. "
                        "Please run 'npm run build' inside the frontend directory."
         }
+
+@app.on_event("shutdown")
+def shutdown_event():
+    logger.info("Shutting down... Cleaning up Milvus local server.")
+    try:
+        from pymilvus import connections
+        connections.disconnect("default")
+    except Exception:
+        pass
+    
+    try:
+        from milvus_lite import default_server
+        default_server.stop()
+    except Exception:
+        pass

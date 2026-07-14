@@ -1,4 +1,4 @@
-const API_BASE = window.location.port === '5173' ? 'http://localhost:8000' : '';
+const API_BASE = '';
 
 export const api = {
   async fetchDocuments() {
@@ -15,7 +15,14 @@ export const api = {
       method: 'POST',
       body: formData
     });
-    const data = await res.json();
+    
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      data = {};
+    }
+    
     if (!res.ok) throw new Error(data.detail || 'Upload failed');
     return data;
   },
