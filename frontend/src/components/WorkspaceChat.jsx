@@ -152,10 +152,13 @@ export default function WorkspaceChat({
                   </div>
                 ) : (
                   <div className="max-w-[78%] rounded-tl-sm rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-neutral-100 text-neutral-900 flex px-4 py-3 flex-col gap-3 shadow-sm text-sm">
-                    <p className="leading-relaxed text-neutral-950 whitespace-pre-wrap">{msg.text}</p>
+                    <p className="leading-relaxed text-neutral-950 whitespace-pre-wrap">
+                      {msg.text}
+                      {msg.streaming && <span className="streaming-cursor" />}
+                    </p>
                     
                     {/* Sources display directly integrated inside Bot bubbles */}
-                    {msg.sources && msg.sources.length > 0 && (
+                    {msg.sources && msg.sources.length > 0 && !msg.streaming && (
                       <div className="border-neutral-200 border-t pt-2 flex flex-col gap-2">
                         {msg.sources
                           .filter(src => {
@@ -182,7 +185,7 @@ export default function WorkspaceChat({
             ))
           )}
 
-          {chatLoading && (
+          {chatLoading && !messages.some(m => m.streaming) && (
             <div className="flex justify-start">
               <div className="max-w-[78%] rounded-tl-sm rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-neutral-100 px-4 py-3">
                 <div className="typing-indicator">

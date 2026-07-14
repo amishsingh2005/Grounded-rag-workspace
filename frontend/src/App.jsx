@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from './api/client';
 
 import Sidebar from './components/Sidebar';
@@ -82,14 +82,91 @@ function App() {
     }
   };
 
+  // Ref to hold the typewriter interval so we can clean it up
+  const typewriterRef = useRef(null);
+
   const triggerChat = async (questionToAsk) => {
     setChatLoading(true);
     setRetrievalError(null);
+
+    // Buffer for incoming text that hasn't been revealed yet
+    const buffer = { full: '', revealed: 0 };
+    const sourcesRef = { current: [] };
+    const streamDone = { current: false };
+
+    // Create a streaming bot message placeholder
+    const botMsgIndex = { current: -1 };
+    setMessages(prev => {
+      botMsgIndex.current = prev.length;
+      return [...prev, { sender: 'bot', text: '', sources: [], streaming: true }];
+    });
+
+    // Typewriter interval: reveals 3 chars every 20ms (~150 chars/sec)
+    const CHARS_PER_TICK = 3;
+    const TICK_MS = 20;
+
+    if (typewriterRef.current) clearInterval(typewriterRef.current);
+    typewriterRef.current = setInterval(() => {
+      if (buffer.revealed < buffer.full.length) {
+        // Reveal next few characters
+        const nextEnd = Math.min(buffer.revealed + CHARS_PER_TICK, buffer.full.length);
+        buffer.revealed = nextEnd;
+        const visibleText = buffer.full.slice(0, nextEnd);
+
+        setMessages(prev => {
+          const updated = [...prev];
+          const msg = updated[botMsgIndex.current];
+          if (msg) updated[botMsgIndex.current] = { ...msg, text: visibleText };
+          return updated;
+        });
+      } else if (streamDone.current) {
+        // All text revealed and stream is done — finalize
+        clearInterval(typewriterRef.current);
+        typewriterRef.current = null;
+        setMessages(prev => {
+          const updated = [...prev];
+          const msg = updated[botMsgIndex.current];
+          if (msg) updated[botMsgIndex.current] = { ...msg, streaming: false, sources: sourcesRef.current };
+          return updated;
+        });
+        setChatLoading(false);
+      }
+    }, TICK_MS);
+
     try {
-      const data = await api.chat(questionToAsk, topK, similarityThreshold);
-      setMessages(prev => [...prev, { sender: 'bot', text: data.answer, sources: data.sources }]);
+      await api.chatStream(questionToAsk, topK, similarityThreshold, {
+        onSources(sources) {
+          sourcesRef.current = sources;
+        },
+        onChunk(token) {
+          buffer.full += token;
+        },
+        onDone() {
+          streamDone.current = true;
+        },
+        onError(err) {
+          clearInterval(typewriterRef.current);
+          typewriterRef.current = null;
+          setMessages(prev => prev.filter((_, i) => i !== botMsgIndex.current));
+          setRetrievalError({
+            title: "Search Service Disconnected",
+            message: err.message || "Failed to retrieve from vector database.",
+            code: "VECTOR_DB_UNAVAILABLE",
+            time: new Date().toLocaleTimeString(),
+            question: questionToAsk
+          });
+          setChatLoading(false);
+        }
+      });
+
+      // Stream ended — mark done so the typewriter interval finishes draining
+      streamDone.current = true;
+
     } catch (err) {
       console.error(err);
+      clearInterval(typewriterRef.current);
+      typewriterRef.current = null;
+      setMessages(prev => prev.filter((_, i) => i !== botMsgIndex.current));
       setRetrievalError({
         title: "Search Service Disconnected",
         message: err.message || "Failed to retrieve from vector database. Please ensure Milvus is running and try again.",
@@ -97,7 +174,6 @@ function App() {
         time: new Date().toLocaleTimeString(),
         question: questionToAsk
       });
-    } finally {
       setChatLoading(false);
     }
   };
