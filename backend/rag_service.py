@@ -1,7 +1,6 @@
 import os
 import logging
 import re
-import json
 from pathlib import Path
 from sqlalchemy.orm import Session
 from pymilvus import connections, Collection
@@ -31,12 +30,14 @@ def patched_fetch_handler(alias=None):
 
 connections._fetch_handler = patched_fetch_handler
 
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_milvus import Milvus
 from langchain.chat_models import init_chat_model
-from langchain_community.tools import DuckDuckGoSearchResults
+from google import genai
+from google.genai import types
 
 from . import models
 
@@ -49,24 +50,57 @@ if not MILVUS_URI:
     else:
         MILVUS_URI = f"http://{MILVUS_HOST}:19530"
 
+# ── Singletons ───────────────────────────────────────────────────────────────
+_embeddings = None
+_vector_store = None
+_chat_model = None
+
 
 def get_embeddings():
-    return GoogleGenerativeAIEmbeddings(model="gemini-embedding-2")
+    global _embeddings
+    if _embeddings is None:
+        _embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-2")
+    return _embeddings
 
 
 def get_vector_store():
-    embeddings = get_embeddings()
-    vector_store = Milvus(
-        embedding_function=embeddings,
-        connection_args={"uri": MILVUS_URI},
-        collection_name="my_documents",
-        drop_old=False,
-    )
-    connections.connect(alias=vector_store.alias, uri=MILVUS_URI)
-    return vector_store
+    global _vector_store
+    if _vector_store is None:
+        embeddings = get_embeddings()
+        _vector_store = Milvus(
+            embedding_function=embeddings,
+            connection_args={"uri": MILVUS_URI},
+            collection_name="my_documents",
+            drop_old=False,
+        )
+        connections.connect(alias=_vector_store.alias, uri=MILVUS_URI)
+    return _vector_store
 
 
-def process_and_index_pdf(db: Session, doc_id: int, filepath: str, filename: str, user_id: int):
+def get_chat_model():
+    global _chat_model
+    if _chat_model is None:
+        _chat_model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
+    return _chat_model
+
+
+def _build_prompt(context: str, query: str, context_label: str = "Context") -> str:
+    """Build a grounded QA prompt from context and query."""
+    return f"""You are a helpful AI assistant.
+
+Answer the user's question ONLY using the provided {context_label.lower()}.
+
+{context_label}:
+{context}
+
+Question:
+{query}
+
+Answer:
+"""
+
+
+def process_and_index_pdf(db: Session, doc_id: int, filepath: str, filename: str):
     """Background task to load PDF, chunk text, generate embeddings, and index in Milvus."""
     try:
         logger.info(f"[INGESTION] Starting - doc_id={doc_id}, file={filename}")
@@ -87,7 +121,6 @@ def process_and_index_pdf(db: Session, doc_id: int, filepath: str, filename: str
             raise ValueError(f"No text chunks could be extracted from {filename}")
 
         for chunk in chunks:
-            chunk.metadata["user_id"] = user_id
             chunk.metadata["doc_id"] = doc_id
             chunk.metadata["source_file"] = filename
             chunk.metadata["file_type"] = "pdf"
@@ -102,12 +135,7 @@ def process_and_index_pdf(db: Session, doc_id: int, filepath: str, filename: str
             db.commit()
 
     except Exception as e:
-        import traceback
         logger.error(f"[INGESTION] Failed - doc_id={doc_id}: {e}", exc_info=True)
-
-        with open("ingestion_error.log", "a") as f:
-            f.write(f"\n{'='*60}\nDocument {doc_id} ({filename}) failed at {__import__('datetime').datetime.now()}\n")
-            f.write(traceback.format_exc())
 
         doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
         if doc:
@@ -115,34 +143,71 @@ def process_and_index_pdf(db: Session, doc_id: int, filepath: str, filename: str
             db.commit()
 
 
-def delete_document_chunks(doc_id: int, user_id: int):
+def delete_document_chunks(doc_id: int):
     """Delete all chunks associated with a document from Milvus."""
     try:
         vector_store = get_vector_store()
         col = Collection(name="my_documents", using=vector_store.alias)
-        col.delete(expr=f"doc_id == {doc_id} and user_id == {user_id}")
+        col.delete(expr=f"doc_id == {doc_id}")
         logger.info(f"[DELETION] Removed chunks for doc_id={doc_id}")
     except Exception as e:
         logger.error(f"[DELETION] Failed for doc_id={doc_id}: {e}", exc_info=True)
 
 
-def search_web(query: str) -> str:
-    """Perform web search as fallback when no document chunks are relevant."""
+def search_web_gemini(query: str) -> tuple:
+    """Use Gemini with Google Search grounding as fallback when no document chunks match."""
     try:
-        search = DuckDuckGoSearchResults(num_results=5)
-        return search.run(query)
+        client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=query,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            ),
+        )
+
+        answer = response.text or "No answer could be generated."
+
+        # Extract grounding sources from the response
+        web_sources = []
+        grounding = getattr(response.candidates[0], "grounding_metadata", None)
+        if grounding and getattr(grounding, "grounding_chunks", None):
+            for chunk in grounding.grounding_chunks:
+                web = getattr(chunk, "web", None)
+                if web:
+                    web_sources.append({
+                        "content": getattr(web, "title", "Google Search"),
+                        "url": getattr(web, "uri", "https://google.com"),
+                        "source_file": getattr(web, "title", "Google Search"),
+                        "score": 0.0
+                    })
+
+        if not web_sources:
+            web_sources.append({
+                "content": answer[:200],
+                "url": "https://google.com",
+                "source_file": "Google Search (via Gemini)",
+                "score": 0.0
+            })
+
+        return answer, web_sources
+
     except Exception as e:
-        logger.error(f"[WEB_SEARCH] Failed: {e}")
-        return "No web results found."
+        logger.error(f"[WEB_SEARCH] Gemini Google Search failed: {e}", exc_info=True)
+        return "Could not retrieve web search results.", [{
+            "content": str(e),
+            "url": "https://google.com",
+            "source_file": "Google Search (Error)",
+            "score": 0.0
+        }]
 
 
-def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float = 0.75):
+def query_rag(query: str, k: int = 10, similarity_threshold: float = 0.75):
     """
     Synchronous RAG query function that retrieves relevant chunks and generates answers.
 
     Args:
         query: User's question
-        user_id: User ID for document filtering
         k: Number of chunks to retrieve (default: 10)
         similarity_threshold: Minimum similarity score (0-1, default: 0.75)
 
@@ -155,7 +220,6 @@ def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float
         results = vector_store.similarity_search_with_score(
             query=query,
             k=k,
-            expr=f"user_id == {user_id}"
         )
 
         valid_chunks = []
@@ -171,62 +235,82 @@ def query_rag(query: str, user_id: int, k: int = 10, similarity_threshold: float
                     "score": float(score)
                 })
 
-        # If no valid chunks, fall back to web search
+        # If no valid chunks, fall back to Gemini with Google Search grounding
         if not valid_chunks:
-            web_results_str = search_web(query)
-
-            web_sources = []
-            matches = re.findall(r"\[snippet:\s*(.*?),\s*title:\s*(.*?),\s*link:\s*(.*?)\]", web_results_str)
-            if matches:
-                for snippet, title, link in matches:
-                    web_sources.append({
-                        "content": snippet,
-                        "url": link,
-                        "source_file": title,
-                        "score": 0.0
-                    })
-            else:
-                web_sources.append({
-                    "content": web_results_str,
-                    "url": "https://duckduckgo.com",
-                    "source_file": "Web Search Results",
-                    "score": 0.0
-                })
-
-            model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
-            prompt = f"""You are a helpful AI assistant.
-        
-Answer the user's question ONLY using the provided web search context.
-
-Web Search Context:
-{web_results_str}
-
-Question:
-{query}
-
-Answer:
-"""
-            response = model.invoke(prompt)
-            return response.content, web_sources
+            return search_web_gemini(query)
 
         # Generate answer using document chunks
         all_chunks = "\n".join(valid_chunks)
-        model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
-        prompt = f"""You are a helpful AI assistant.
-
-Answer the user's question ONLY using the context below.
-
-Context:
-{all_chunks}
-
-Question:
-{query}
-
-Answer:
-"""
+        model = get_chat_model()
+        prompt = _build_prompt(all_chunks, query)
         response = model.invoke(prompt)
         return response.content, sources
 
     except Exception as e:
         logger.error(f"[RAG] Query failed: {e}", exc_info=True)
         raise
+
+
+def query_rag_stream(query: str, k: int = 10, similarity_threshold: float = 0.75):
+    """
+    Streaming RAG query generator that yields SSE-formatted events.
+
+    Yields:
+        SSE event strings: "event: sources", "event: chunk", "event: done", or "event: error"
+    """
+    import json
+
+    try:
+        vector_store = get_vector_store()
+
+        results = vector_store.similarity_search_with_score(
+            query=query,
+            k=k,
+        )
+
+        valid_chunks = []
+        sources = []
+
+        for doc, score in results:
+            similarity = 1 - float(score)
+            if similarity >= similarity_threshold:
+                valid_chunks.append(doc.page_content)
+                sources.append({
+                    "content": doc.page_content,
+                    "source_file": doc.metadata.get("source_file", "unknown"),
+                    "score": float(score)
+                })
+
+        # If no valid chunks, fall back to Gemini with Google Search grounding
+        if not valid_chunks:
+            answer, web_sources = search_web_gemini(query)
+            yield f"event: sources\ndata: {json.dumps(web_sources)}\n\n"
+            # Stream the web answer in small chunks to simulate streaming
+            chunk_size = 4
+            words = answer.split(" ")
+            for i in range(0, len(words), chunk_size):
+                token = " ".join(words[i:i + chunk_size])
+                if i > 0:
+                    token = " " + token
+                yield f"event: chunk\ndata: {json.dumps(token)}\n\n"
+            yield "event: done\ndata: {}\n\n"
+            return
+
+        # Send sources first
+        yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
+
+        # Stream answer using document chunks
+        all_chunks = "\n".join(valid_chunks)
+        model = get_chat_model()
+        prompt = _build_prompt(all_chunks, query)
+
+        for chunk in model.stream(prompt):
+            token = chunk.content
+            if token:
+                yield f"event: chunk\ndata: {json.dumps(token)}\n\n"
+
+        yield "event: done\ndata: {}\n\n"
+
+    except Exception as e:
+        logger.error(f"[RAG] Stream query failed: {e}", exc_info=True)
+        yield f"event: error\ndata: {json.dumps(str(e))}\n\n"

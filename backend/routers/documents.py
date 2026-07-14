@@ -6,7 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, auth, database, rag_service
+from .. import models, schemas, database, rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +15,10 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 UPLOAD_DIR = Path("./uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-ALLOWED_MIME_TYPES = {
-    "application/pdf",
-    "application/x-pdf",
-    "application/x-bzpdf",
-    "application/x-gzpdf",
-    "application/x-www-form-urlencoded;charset=UTF-8",
-}
-
 @router.post("/upload", response_model=schemas.DocumentResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
     try:
@@ -36,32 +27,28 @@ async def upload_document(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid file extension. Only .pdf files are supported. Received: {file.filename}"
             )
-        
-        if file.content_type not in ALLOWED_MIME_TYPES:
-            logger.warning(f"[UPLOAD] Unusual MIME type: {file.content_type} for {file.filename}")
 
-        file_uuid = f"{current_user.id}_{int(time.time())}_{file.filename}"
+        file_uuid = f"{int(time.time())}_{file.filename}"
         safe_filename = "".join(c for c in file_uuid if c.isalnum() or c in "._-")
         filepath = UPLOAD_DIR / safe_filename
-        
+
         with filepath.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        
+
         file_size = filepath.stat().st_size
-        
+
         if file_size == 0:
             filepath.unlink()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Uploaded file is empty. Please provide a valid PDF."
             )
-        
+
         db_doc = models.Document(
             filename=file.filename,
             filepath=str(filepath),
             file_size=file_size,
             status="processing",
-            user_id=current_user.id
         )
         db.add(db_doc)
         db.commit()
@@ -73,11 +60,10 @@ async def upload_document(
             doc_id=db_doc.id,
             filepath=str(filepath),
             filename=file.filename,
-            user_id=current_user.id
         )
 
         return db_doc
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -89,21 +75,18 @@ async def upload_document(
 
 @router.get("", response_model=List[schemas.DocumentResponse])
 def list_documents(
-    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    return db.query(models.Document).filter(models.Document.user_id == current_user.id).all()
+    return db.query(models.Document).all()
 
 @router.delete("/{doc_id}", status_code=status.HTTP_200_OK)
 def delete_document(
     doc_id: int,
     background_tasks: BackgroundTasks,
-    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
     doc = db.query(models.Document).filter(
-        models.Document.id == doc_id, 
-        models.Document.user_id == current_user.id
+        models.Document.id == doc_id,
     ).first()
 
     if not doc:
@@ -119,7 +102,7 @@ def delete_document(
     except Exception as e:
         logger.error(f"Error removing file {doc.filepath}: {str(e)}")
 
-    background_tasks.add_task(rag_service.delete_document_chunks, doc_id=doc_id, user_id=current_user.id)
+    background_tasks.add_task(rag_service.delete_document_chunks, doc_id=doc_id)
 
     db.delete(doc)
     db.commit()

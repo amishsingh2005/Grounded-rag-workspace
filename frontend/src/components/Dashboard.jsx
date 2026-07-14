@@ -2,13 +2,12 @@ import React, { useRef } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { AlertCircle, RotateCcw, CloudUpload, LoaderCircle, FolderOpen, Files, CheckCircle2, FileText, FileX, Trash2, ArrowRight, MessageCircle, X, XCircle, Circle, Check, Blocks, Binary } from 'lucide-react';
+import { AlertCircle, RotateCcw, CloudUpload, LoaderCircle, FolderOpen, Files, CheckCircle2, FileText, FileX, Trash2, ArrowRight, MessageCircle, X, XCircle, Circle, Check } from 'lucide-react';
 import { formatSize } from '../utils';
 
 export default function Dashboard({ 
   documents, 
   uploading, 
-  uploadProgress, 
   uploadError, 
   setUploadError, 
   handleFileUpload, 
@@ -32,7 +31,7 @@ export default function Dashboard({
   const stepEmbeddingStatus = hasFailedFiles ? 'inactive' : (hasFiles ? (isCurrentlyProcessing ? 'active' : 'completed') : 'pending');
   const stepIndexingStatus = hasFailedFiles ? 'inactive' : (hasFiles ? (isCurrentlyProcessing ? 'active' : 'completed') : 'pending');
 
-  const totalChunks = completedDocs.length * 28; 
+
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -69,7 +68,7 @@ export default function Dashboard({
               <div className="size-12 rounded-full bg-[#e7000b]/10 text-[#e7000b] flex justify-center items-center">
                 <AlertCircle className="size-6" />
               </div>
-              <p className="font-semibold text-[#e7000b] text-base leading-6">Upload failed: unsupported file type or corrupted file</p>
+              <p className="font-semibold text-[#e7000b] text-base leading-6">{uploadError ? `Upload failed: ${uploadError}` : 'Upload failed: unsupported file type or corrupted file'}</p>
               <p className="text-neutral-500 text-sm leading-5">Please remove the invalid file and try again</p>
               <button 
                 className="inline-flex text-white font-medium rounded-xl bg-[#e7000b] text-sm leading-5 px-4 py-2 justify-center items-center gap-2 hover:bg-[#e7000b]/90 transition-colors"
@@ -112,11 +111,6 @@ export default function Dashboard({
             </>
           )}
           
-          {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-neutral-200 h-2 rounded-full overflow-hidden shadow-inner">
-              <div className="bg-neutral-900 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-            </div>
-          )}
           <p className="text-neutral-500 text-xs leading-4">Supports PDF documents up to 50MB</p>
           
           <div className="flex flex-col gap-2 overflow-y-auto max-h-[340px] custom-scrollbar pr-1">
@@ -264,39 +258,15 @@ export default function Dashboard({
             </div>
           </div>
           
-          {/* Small Info Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-2xl bg-neutral-100/40 border-neutral-200 border border-solid p-4">
-              <div className="flex items-center gap-4">
-                <div className="size-10 rounded-xl bg-neutral-100 text-neutral-950 flex justify-center items-center">
-                  <Files className="size-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-2xl leading-8">{completedDocs.length}</span>
-                  <span className="text-neutral-500 text-xs leading-4 mt-1">Documents Loaded</span>
-                </div>
+          {/* Documents Loaded Card */}
+          <div className="rounded-2xl bg-neutral-100/40 border-neutral-200 border border-solid p-4">
+            <div className="flex items-center gap-4">
+              <div className="size-10 rounded-xl bg-neutral-100 text-neutral-950 flex justify-center items-center">
+                <Files className="size-5" />
               </div>
-            </div>
-            <div className="rounded-2xl bg-neutral-100/40 border-neutral-200 border border-solid p-4">
-              <div className="flex items-center gap-4">
-                <div className="size-10 rounded-xl bg-neutral-100 text-neutral-950 flex justify-center items-center">
-                  <Blocks className="size-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-2xl leading-8">{totalChunks}</span>
-                  <span className="text-neutral-500 text-xs leading-4 mt-1">Chunks Created</span>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-2xl bg-neutral-100/40 border-neutral-200 border border-solid p-4">
-              <div className="flex items-center gap-4">
-                <div className="size-10 rounded-xl bg-neutral-100 text-neutral-950 flex justify-center items-center">
-                  <Binary className="size-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-2xl leading-8">{totalChunks > 0 ? `${totalChunks}/${totalChunks}` : '0/0'}</span>
-                  <span className="text-neutral-500 text-xs leading-4 mt-1">Embeddings</span>
-                </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-2xl leading-8">{completedDocs.length}</span>
+                <span className="text-neutral-500 text-xs leading-4 mt-1">Documents Loaded</span>
               </div>
             </div>
           </div>

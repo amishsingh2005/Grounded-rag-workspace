@@ -1,27 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
-
-# Auth Schemas
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-
-class UserResponse(BaseModel):
-    id: int
-    email: EmailStr
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
-    user_id: Optional[int] = None
 
 # Document Schemas
 class DocumentResponse(BaseModel):
@@ -35,7 +14,6 @@ class DocumentResponse(BaseModel):
         from_attributes = True
 
 # Chat/RAG Schemas
-# Chat/RAG Schemas
 class ChatRequest(BaseModel):
     question: str
     top_k: Optional[int] = 5
@@ -48,6 +26,5 @@ class SourceChunk(BaseModel):
     score: Optional[float] = None
 
 class ChatResponse(BaseModel):
-    source_type: str = "document"
     answer: str
     sources: List[SourceChunk]

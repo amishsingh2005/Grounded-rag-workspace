@@ -20,28 +20,27 @@ from fastapi.responses import FileResponse
 
 from . import database
 from . import models
-from .routers import auth, documents, chat
+from .routers import documents, chat
 
 # Initialize database tables
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
     title="RAG Pipeline API",
-    description="Production-ready API for the RAG pipeline with authentication and document isolation",
+    description="Production-ready API for the RAG pipeline with document management",
     version="1.0.0",
 )
 
 # CORS configuration for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to specific origins
+    allow_origins=["*"],  # In production, restrict this to specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include Routers
-app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
 
