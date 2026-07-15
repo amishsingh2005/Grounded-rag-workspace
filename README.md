@@ -886,9 +886,9 @@ This project is built on excellent open-source work and powerful APIs:
 
 ## Contact
 
-> **Maintainer:** Your Name
-> **Email:** your.email@example.com
-> **GitHub:** [@your-username](https://github.com/your-username)
+> **Maintainer:** Amish Singh
+> **Email:** amishsingh2005@gmail.com
+> **GitHub:** (https://github.com/amishsingh2005)
 > **Project Repository:** [github.com/your-username/docuintel-ai](https://github.com/your-username/docuintel-ai)
 
 **Found a bug?** → Open an [Issue](https://github.com/your-username/docuintel-ai/issues)
@@ -898,7 +898,6 @@ This project is built on excellent open-source work and powerful APIs:
 
 <div align="center">
 
-Made with ❤️ and powered by Gemini AI
 
 [⬆ Back to Top](#docuintel-ai-)
 
