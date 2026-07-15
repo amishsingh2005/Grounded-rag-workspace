@@ -1,467 +1,905 @@
-# 🤖 DocuIntel AI: Enterprise RAG Console
+# DocuIntel AI 🧠
 
-*A highly-scalable, production-ready Retrieval-Augmented Generation (RAG) platform that provides context-grounded, hallucination-free AI answers from your enterprise PDF documents.*
+> **An enterprise-grade, AI-powered document intelligence platform** — upload PDFs, ask questions in natural language, and receive grounded answers backed by exact source citations. When your documents can't answer, the system intelligently falls back to live web search via Gemini's Google Search grounding.
 
-<div align="center">
-
-[![Python Version](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![LangChain](https://img.shields.io/badge/LangChain-🦜-1C3C3C?style=flat-square)](https://www.langchain.com/)
-[![Google Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
-[![Milvus Vector DB](https://img.shields.io/badge/Milvus-Vector_DB-00A1EA?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyTDIgN2wxMCA1IDEwLTV6TTIgMTdsOSA1IDktNXYtNWwtOSA1LTktNXoiLz48L3N2Zz4=&logoColor=white)](https://milvus.io/)
-[![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-
-</div>
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
+[![Milvus](https://img.shields.io/badge/Milvus-3.0-00A1EA?style=flat-square)](https://milvus.io/)
+[![Gemini](https://img.shields.io/badge/Gemini-2.5--Flash-4285F4?style=flat-square&logo=google)](https://deepmind.google/technologies/gemini/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
-## 📌 Table of Contents
+## Table of Contents
 
-- [Project Overview](#project-overview)
+- [Overview](#overview)
 - [Features](#features)
-- [Screenshots Walkthrough](#screenshots-walkthrough)
-- [Project Workflow](#project-workflow)
-- [Architecture Diagram](#architecture-diagram)
-- [Folder Structure](#folder-structure)
-- [Tech Stack](#tech-stack)
-- [Installation & Setup](#installation--setup)
+- [Technology Stack](#technology-stack)
+- [System Architecture](#system-architecture)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
 - [Environment Variables](#environment-variables)
-- [Usage Guide](#usage-guide)
-- [AI Pipeline Details](#ai-pipeline-details)
-- [API Documentation](#api-documentation)
-- [Configuration Settings](#configuration-settings)
+- [Running the Project](#running-the-project)
+- [API Endpoints](#api-endpoints)
+- [Database Schema Overview](#database-schema-overview)
+- [Key Features Deep Dive](#key-features-deep-dive)
+- [Screenshots](#screenshots)
+- [Workflow](#workflow)
+- [Security Features](#security-features)
 - [Performance Optimizations](#performance-optimizations)
 - [Error Handling](#error-handling)
-- [Security Audit](#security-audit)
-- [Future Improvements](#future-improvements)
+- [Logging & Monitoring](#logging--monitoring)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Roadmap](#roadmap)
+- [Future Enhancements](#future-enhancements)
 - [Contributing](#contributing)
 - [License](#license)
-- [Author](#author)
+- [Acknowledgements](#acknowledgements)
+- [Contact](#contact)
 
 ---
 
-## 📖 Project Overview
+## Overview
 
-**DocuIntel AI** is a state-of-the-art Enterprise Retrieval-Augmented Generation (RAG) platform designed to eliminate LLM hallucinations by grounding responses directly in your organization's proprietary PDF documents. 
+**DocuIntel AI** is a production-ready Retrieval-Augmented Generation (RAG) platform that transforms static PDF documents into an interactive, intelligent knowledge base. Built for enterprise workspaces, it combines semantic vector search with state-of-the-art generative AI to deliver precise, document-grounded answers in real time.
 
-In today's corporate landscape, critical knowledge is locked away in sprawling PDFs, reports, and manuals. Traditional keyword search is insufficient, and public LLMs lack access to these private docs while risking data exposure. **DocuIntel AI** solves this by providing:
-1. **Secure Document Ingestion**: Users register, log in, and upload private PDFs.
-2. **Deterministic Retrieval**: Document text is chunked, mapped into vector embeddings, and indexed in Milvus.
-3. **Contextual Grounding**: User queries fetch the most semantically similar text segments.
-4. **Smart LLM Generation**: Google Gemini 2.5 Flash constructs responses *exclusively* from retrieved segments, falling back gracefully to general knowledge only when allowed by safety thresholds.
+The system operates on a hybrid intelligence model:
+1. **Primary**: Searches your uploaded documents using dense vector similarity.
+2. **Fallback**: When documents are insufficient, it automatically queries the live web via Gemini's Google Search grounding — seamlessly and transparently.
 
-By hosting the vector index and document storage in isolated user domains, DocuIntel AI ensures enterprise-grade security and document privacy.
+Answers are streamed token-by-token with a typewriter effect and always include source citations so users can trace every claim back to its origin.
 
 ---
 
-## ⚡ Features
+## Features
 
-### 🧠 AI & Retrieval Features
-- **Retrieval-Augmented Generation (RAG)**: Generates precise answers anchored in uploaded PDF context.
-- **Semantic Vector Search**: Powered by `gemini-embedding-2` for multi-dimensional semantic mapping.
-- **Hybrid Fallback Logic**: If no document chunks meet the similarity threshold, the system gracefully falls back to Gemini's general knowledge while explicitly marking the output source as `__gemini_general__`.
-- **Source Attribution**: Returns exact document names and similarity scores for every answer chunk.
-- **Dynamic Retrieval Tuning**: Slide-to-adjust control for `Top-K Chunks` and `Similarity Threshold` at query time.
-
-### ⚙️ Backend Features
-- **FastAPI Core**: High-performance, asynchronous REST APIs with auto-generated OpenAPI documentation.
-- **User Document Isolation**: Multi-tenancy support using SQLAlchemy-managed user accounts and metadata-filtered vector queries.
-- **Background Ingestion Tasks**: FastAPI `BackgroundTasks` processes heavy PDF parsing and vector indexing asynchronously without blocking the UI.
-- **SQLite Database Integration**: SQL storage for user credentials and document ingestion audit trails.
-
-### 🎨 Frontend Features
-- **Premium Glassmorphic Design**: Clean UI with dynamic micro-animations and status trackers.
-- **Interactive Workspace Chat**: Context-grounded conversation terminal showing live source references.
-- **Drag-and-Drop Uploader**: Modern drag-and-drop zone supporting PDF files up to 50MB.
-- **Pipeline Ingestion Tracker**: Live progress check showing stages: Ingestion ➔ Chunking ➔ Embeddings ➔ Vector DB Indexing.
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | **PDF Document Ingestion** | Upload PDFs with full validation (magic bytes, page count, readability). Documents are chunked and indexed asynchronously without blocking the UI. |
+| 2 | **Semantic Vector Search** | Uses Google's `gemini-embedding-2` model to embed text chunks and stores them in Milvus for sub-second similarity retrieval. |
+| 3 | **Streaming AI Responses** | Chat responses are streamed via Server-Sent Events (SSE) and revealed with a typewriter animation for a premium conversational experience. |
+| 4 | **Intelligent Web Fallback** | If no sufficiently similar document chunks are found (or the model signals `INSUFFICIENT_CONTEXT`), the system transparently falls back to Gemini + Google Search grounding. |
+| 5 | **Source Citations** | Every answer includes clickable source references — PDF filenames for document answers, web URLs for search-grounded answers. |
+| 6 | **Configurable Retrieval Parameters** | Users can tune `top_k` (number of chunks) and `similarity_threshold` per query for fine-grained retrieval control. |
+| 7 | **Document Lifecycle Management** | Full CRUD for documents: upload, list with status tracking, and deletion (removes both the file and associated Milvus vectors). |
+| 8 | **Real-time Processing Status** | Dashboard polls for processing status updates every 2 seconds while documents are being indexed. |
+| 9 | **Drag-and-Drop Upload** | Intuitive drag-and-drop file zone with client-side validation (type, size ≤ 50 MB). |
+| 10 | **Docker Full-Stack Deployment** | Multi-stage Docker build with Compose orchestrating the RAG app, Milvus standalone, MinIO object storage, and etcd in a single command. |
 
 ---
 
-## 📸 Screenshots Walkthrough
+## Technology Stack
 
-### 1. User Authentication
-![Authentication Page](screenshots/login.png)
-* **Functional Description**: Secure gateway supporting email/password registration and JWT-based session token acquisition. It includes a user-friendly error banner to notify users of network issues or invalid credentials.
+| Category | Technology | Purpose |
+|----------|-----------|---------|
+| **Frontend** | React 19, Vite 8 | SPA framework and dev/build tooling |
+| **Frontend UI** | Lucide React, Custom CSS | Icon library and design system |
+| **Frontend Linting** | Oxlint | Blazing-fast JavaScript/React linting |
+| **Backend** | FastAPI 0.115, Python 3.12 | Async REST API framework |
+| **Backend Server** | Uvicorn (standard) | ASGI server with WebSocket support |
+| **RAG Framework** | LangChain 0.3 | Document loading, splitting, and LLM orchestration |
+| **Embeddings** | `langchain-google-genai` → `gemini-embedding-2` | Dense vector generation for semantic search |
+| **LLM** | Gemini 2.5 Flash (via LangChain + native SDK) | Answer generation and web-grounded fallback |
+| **Vector Database** | Milvus 3.0 (standalone + Milvus Lite) | Scalable approximate nearest-neighbor search |
+| **Vector DB Storage** | MinIO | S3-compatible object storage backend for Milvus |
+| **Vector DB Config** | etcd | Distributed key-value store for Milvus metadata |
+| **Relational Database** | SQLite (via SQLAlchemy 2.0) | Persistent document metadata storage |
+| **PDF Processing** | PyPDFLoader (LangChain), pypdf | PDF loading, validation, and text extraction |
+| **Text Splitting** | `RecursiveCharacterTextSplitter` | Intelligent chunking with overlap |
+| **Authentication** | PyJWT, bcrypt | JWT-based auth infrastructure *(ready for integration)* |
+| **Streaming** | Server-Sent Events (SSE) | Real-time token streaming to the frontend |
+| **DevOps** | Docker, Docker Compose | Multi-service containerized deployment |
+| **Environment** | python-dotenv | Environment variable management |
+| **Validation** | Pydantic v2, email-validator | Request/response schema validation |
+| **Search Fallback** | Google GenAI SDK + Google Search | Live web grounding when docs are insufficient |
 
 ---
 
-### 2. Document Dashboard & Pipeline Ingestion Tracker
-![Dashboard](screenshots/dashboard.webp)
-* **Functional Description**: The administration hub where users upload files. Once a file is dropped, the backend initiates a multi-stage background worker. The status card shows progress on document ingestion, text chunking, embedding generation, and vector store indexing. It also displays ingestion stats like total chunks created and embedded.
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Browser (React 19 + Vite)                │
+│   Dashboard (Upload / Manage)  ↔  Workspace Chat (SSE Stream)   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ HTTP / SSE
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   FastAPI Backend (Uvicorn)                      │
+│                                                                  │
+│  /api/documents  ──► Document Router ──► SQLite (SQLAlchemy)    │
+│                                    └──► Background Task         │
+│                                         └──► RAG Service        │
+│  /api/chat       ──► Chat Router   ──► RAG Service              │
+│  /api/chat/stream──► Chat Router   ──► RAG Service (SSE)        │
+└──────────────┬──────────────────────────────────────────────────┘
+               │
+       ┌───────┴──────────────────────────────────┐
+       │           RAG Service Pipeline            │
+       │                                           │
+       │  1. gemini-embedding-2  ──► Milvus Search │
+       │  2. Similarity Filter  ──► Valid Chunks?  │
+       │     YES: Gemini 2.5 Flash (LangChain)     │
+       │     NO:  Gemini 2.5 Flash + Google Search │
+       └───────────────────────────────────────────┘
+               │
+       ┌───────┴────────────────────────┐
+       │        Milvus Standalone        │
+       │  (etcd + MinIO + Milvus core)  │
+       └────────────────────────────────┘
+```
+
+**Component interaction summary:**
+
+1. The **React frontend** communicates with the FastAPI backend over a clean REST API and an SSE stream.
+2. The **FastAPI backend** manages document metadata in **SQLite** and offloads indexing to **background tasks**.
+3. The **RAG Service** uses **Google Gemini Embeddings** to encode queries, performs similarity search on **Milvus**, filters by a configurable threshold, then calls **Gemini 2.5 Flash** to generate grounded answers.
+4. If document retrieval is insufficient, it falls back to **Gemini with Google Search grounding** and returns cited web sources.
+5. In Docker, all services are networked internally: etcd → MinIO → Milvus → RAG App.
 
 ---
 
-### 3. Document Metadata Viewer
-![Document Viewer](screenshots/document_viewer.webp)
-* **Functional Description**: Provides a checklist of uploaded documents, showing file name, size, upload time, and backend verification markers. Users can review their active knowledge base footprint or delete files to remove their indices from the database.
+## Project Structure
 
----
-
-### 4. Workspace Chat Interface
-![Chat Interface](screenshots/query_workspace.webp)
-* **Functional Description**: The query terminal. Users adjust the parameters (Top-K Chunks, Similarity Threshold) on the left sidebar to fine-tune retrieval constraints. When a query is submitted, the conversation rendering shows both the text response and fallback warnings (e.g., indicating if no sources matched the threshold).
-
----
-
-## 🗂️ Folder Structure
-
-```text
-docuintel-ai/
-├── backend/                       # FastAPI Python Backend
-│   ├── __init__.py                # Package initialization
-│   ├── auth.py                    # JWT, Bcrypt hashing, & Dependency injection
-│   ├── database.py                # SQLAlchemy engine and session pool
-│   ├── models.py                  # Database entities (User, Document)
-│   ├── schemas.py                 # Pydantic schemas (Req/Res validation)
-│   ├── main.py                    # Main FastAPI controller & static mounts
-│   └── rag_service.py             # Vector search, PDF parsing, & Gemini RAG
-├── frontend/                      # React / Vite SPA Frontend
-│   ├── dist/                      # Production build assets (created on build)
-│   ├── src/                       # Frontend Source code
-│   │   ├── components/            # Reusable UI widgets
-│   │   ├── App.jsx                # Core application workflow state and views
-│   │   ├── index.css              # Custom Tailwind/Vanilla layout styles
-│   │   └── main.jsx               # React DOM entry mount
-│   ├── package.json               # Node dependency config
-│   └── vite.config.js             # Vite development proxy options
-├── screenshots/                   # Application walk-through images
-├── docker-compose.yml             # Orchestration for etcd, minio, milvus, & app
-├── Dockerfile                     # Multi-stage production build script
-├── requirements.txt               # Backend Python dependencies
-├── start.bat                      # Local automation script for Windows
-├── .env.example                   # Template for environment settings
-└── README.md                      # Documentation (This file)
+```
+📁 docuintel-ai/
+├── 📄 Dockerfile                   # Multi-stage build (Node → Python)
+├── 📄 docker-compose.yml           # Orchestrates app + Milvus stack
+├── 📄 requirements.txt             # Python dependencies
+├── 📄 start.bat                    # Local dev startup script (Windows)
+├── 📄 .env                         # Environment secrets (gitignored)
+├── 📄 .gitignore
+├── 📄 .dockerignore
+│
+├── 📁 backend/                     # FastAPI application
+│   ├── 📄 __init__.py
+│   ├── 📄 main.py                  # App factory, CORS, static files, lifecycle
+│   ├── 📄 database.py              # SQLAlchemy engine & session factory
+│   ├── 📄 models.py                # ORM models (Document)
+│   ├── 📄 schemas.py               # Pydantic request/response schemas
+│   ├── 📄 rag_service.py           # Core RAG logic: ingest, search, stream
+│   └── 📁 routers/
+│       ├── 📄 documents.py         # /api/documents CRUD endpoints
+│       └── 📄 chat.py              # /api/chat & /api/chat/stream endpoints
+│
+├── 📁 frontend/                    # React + Vite SPA
+│   ├── 📄 index.html
+│   ├── 📄 vite.config.js
+│   ├── 📄 package.json
+│   └── 📁 src/
+│       ├── 📄 App.jsx              # Root component, state management
+│       ├── 📄 index.css            # Global design system & utilities
+│       ├── 📁 api/
+│       │   └── 📄 client.js        # Typed API client (REST + SSE)
+│       ├── 📁 components/
+│       │   ├── 📄 Dashboard.jsx    # Document upload & management view
+│       │   ├── 📄 WorkspaceChat.jsx# Chat interface with streaming
+│       │   ├── 📄 Sidebar.jsx      # Navigation sidebar
+│       │   └── 📁 ui/              # Reusable UI primitives
+│       └── 📄 utils.js             # Helper functions (e.g., formatSize)
+│
+├── 📁 uploads/                     # Persisted PDF uploads (volume-mounted)
+├── 📁 milvus_local.db/             # Milvus Lite local DB (dev only)
+└── 📄 backend.db                   # SQLite database file
 ```
 
 ---
 
-## 💻 Tech Stack
+## Installation
 
-| Category | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Frontend Framework** | React 19 + Vite | High-performance Single Page Application framework |
-| **Styling** | Vanilla CSS + Tailwind | Fluid, glassmorphic layout system with dark modes |
-| **API Framework** | FastAPI (Python 3.12) | Asynchronous backend endpoints for upload & querying |
-| **Database (Relational)** | SQLite + SQLAlchemy | Persistence of user credentials & ingestion metadata |
-| **Vector Database** | Milvus Standalone (v3.0) / Milvus Lite | Semantic embedding indexing and high-speed vector retrieval |
-| **Embeddings Model** | Google gemini-embedding-2 | Generating high-dimensional vector representations |
-| **Language Model (LLM)** | Google gemini-2.5-flash | Fast, highly accurate context-grounded response generation |
-| **RAG Orchestration** | LangChain (Community & Core) | Handles document loading, splitting, and vector store bindings |
-| **PDF Parser** | PyPDF (via PyPDFLoader) | Extracting text layers from raw files |
-| **Authentication** | PyJWT + Bcrypt | Secure token generation, verification, and password hashing |
-| **Containerization** | Docker + Docker Compose | Standardization of etcd, MinIO, Milvus, and the app |
+### Prerequisites
+
+Ensure the following are installed:
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| Python | 3.12+ | Recommended via `pyenv` or official installer |
+| Node.js | 20+ | LTS version recommended |
+| npm | 10+ | Bundled with Node.js |
+| Docker | 24+ | With Docker Compose V2 |
+| Git | Any | For cloning the repository |
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/your-username/docuintel-ai.git
+cd docuintel-ai
+```
+
+### Local Development Setup (Without Docker)
+
+**1. Create and activate a Python virtual environment:**
+
+```bash
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+**2. Install Python dependencies:**
+
+```bash
+pip install -r requirements.txt
+```
+
+**3. Install frontend dependencies:**
+
+```bash
+cd frontend
+npm install
+cd ..
+```
 
 ---
 
-## 🚀 Installation & Setup
+## Environment Variables
 
-### Option 1: Quick Start via Docker Compose (Recommended)
-This launches the full production-grade stack including the isolated Milvus server, MinIO object store, etcd config manager, and your application.
+Create a `.env` file in the project root. **Never commit this file to version control.**
 
-1. **Clone the Repository**:
+```env
+# ── Required ─────────────────────────────────────────────────────────────────
+
+# Google AI API Key — required for Gemini embeddings, chat, and web search grounding
+# Obtain from: https://aistudio.google.com/app/apikey
+GOOGLE_API_KEY=your_google_api_key_here
+
+# ── Optional (with defaults) ──────────────────────────────────────────────────
+
+# Milvus connection URI (defaults to local Milvus Lite file when running locally)
+# Set to http://milvus-standalone:19530 when using Docker Compose
+MILVUS_URI=
+
+# Milvus host override (alternative to MILVUS_URI)
+# Leave empty for local dev (uses ./milvus_local.db)
+MILVUS_HOST=
+
+# SQLite database path (Docker sets this to /app/data/backend.db)
+DATABASE_URL=sqlite:///./backend.db
+
+# JWT secret key for authentication — change in production!
+JWT_SECRET=change-this-to-a-secure-random-value-in-production
+```
+
+> **Note:** In Docker Compose, `MILVUS_HOST`, `DATABASE_URL`, and `JWT_SECRET` are injected directly via `docker-compose.yml`. Only `GOOGLE_API_KEY` must be present in your `.env` file.
+
+---
+
+## Running the Project
+
+### Option A: Docker Compose (Recommended — Full Stack)
+
+Launches the entire stack: RAG app + Milvus standalone + MinIO + etcd.
+
+```bash
+# Build and start all services
+docker compose up --build
+
+# Run in detached (background) mode
+docker compose up --build -d
+
+# View live logs
+docker compose logs -f rag-app
+
+# Stop all services
+docker compose down
+
+# Stop and wipe all volumes (clears all data)
+docker compose down -v
+```
+
+The application will be available at **http://localhost:8000**.
+
+---
+
+### Option B: Local Development (Hot-Reload)
+
+Run backend and frontend separately for a fast development loop.
+
+**Start the Backend:**
+
+```bash
+# From project root (with .venv activated)
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+- FastAPI server: **http://localhost:8000**
+- Swagger UI (interactive docs): **http://localhost:8000/docs**
+- ReDoc: **http://localhost:8000/redoc**
+
+**Start the Frontend (separate terminal):**
+
+```bash
+cd frontend
+npm run dev
+```
+
+Vite dev server: **http://localhost:5173**
+
+**Build Frontend for Production (served via FastAPI):**
+
+```bash
+cd frontend
+npm run build
+# Output → frontend/dist/ (served as static files by FastAPI)
+```
+
+---
+
+### Option C: Windows Quick Start
+
+```bat
+start.bat
+```
+
+Handles virtual environment activation, backend startup, and frontend dev server launch in one step.
+
+---
+
+### Milvus (Local Development)
+
+In local development, the application automatically uses **Milvus Lite** — a lightweight, embedded Milvus instance stored in `./milvus_local.db`. **No separate Milvus installation is required for local development.**
+
+For production with Docker Compose, the full Milvus standalone stack (etcd + MinIO + Milvus) is orchestrated automatically.
+
+---
+
+## API Endpoints
+
+### Documents
+
+| Method | Endpoint | Description | Request | Response |
+|--------|----------|-------------|---------|----------|
+| `POST` | `/api/documents/upload` | Upload and index a PDF | `multipart/form-data` (`file`) | `DocumentResponse` — 202 Accepted |
+| `GET` | `/api/documents` | List all documents with status | — | `List[DocumentResponse]` |
+| `DELETE` | `/api/documents/{doc_id}` | Delete document and its vectors | — | `{"message": "Document deleted successfully"}` |
+
+### Chat / RAG
+
+| Method | Endpoint | Description | Request | Response |
+|--------|----------|-------------|---------|----------|
+| `POST` | `/api/chat` | Synchronous RAG query | `ChatRequest` JSON | `ChatResponse` JSON |
+| `POST` | `/api/chat/stream` | Streaming RAG query | `ChatRequest` JSON | `text/event-stream` (SSE) |
+
+### SSE Event Types (`/api/chat/stream`)
+
+| Event Name | Data Format | Description |
+|------------|-------------|-------------|
+| `sources` | `[SourceChunk]` JSON array | Citation sources — emitted before or alongside streaming |
+| `chunk` | Token string | Partial response text — append to build the full answer |
+| `done` | `{}` | Signals the stream has completed successfully |
+| `error` | Error message string | Signals a stream failure with error details |
+
+### Example Payloads
+
+**Request:**
+```json
+POST /api/chat
+{
+  "question": "What are the key findings in the uploaded report?",
+  "top_k": 10,
+  "similarity_threshold": 0.75
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "According to the report, the key findings are...",
+  "sources": [
+    {
+      "content": "The relevant passage from the document...",
+      "source_file": "annual_report_2024.pdf",
+      "url": null,
+      "score": 0.12
+    }
+  ]
+}
+```
+
+**Web Fallback Response:**
+```json
+{
+  "answer": "Based on current information...",
+  "sources": [
+    {
+      "content": "Google Search Result Title",
+      "source_file": "Google Search Result Title",
+      "url": "https://example.com/article",
+      "score": 0.0
+    }
+  ]
+}
+```
+
+---
+
+## Database Schema Overview
+
+### SQLite — `documents` Table
+
+Managed by **SQLAlchemy 2.0** with automatic schema creation on startup (`create_all`).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `INTEGER` | PK, Auto-increment | Unique document identifier |
+| `filename` | `VARCHAR` | NOT NULL | Original uploaded filename |
+| `filepath` | `VARCHAR` | NOT NULL | Absolute path to saved PDF on disk |
+| `file_size` | `INTEGER` | NOT NULL | File size in bytes |
+| `upload_time` | `DATETIME` | NOT NULL, server default | Upload timestamp |
+| `status` | `VARCHAR` | NOT NULL, default `"processing"` | `"processing"` / `"completed"` / `"failed"` |
+
+### Milvus — `my_documents` Collection
+
+Stores dense vector embeddings for all indexed PDF text chunks.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pk` | Auto ID | Primary key (auto-generated) |
+| `text` | `VARCHAR` | The raw text chunk content |
+| `vector` | `FLOAT_VECTOR` | Gemini embedding vector |
+| `doc_id` | `INT64` (metadata) | Foreign reference to SQLite `documents.id` |
+| `source_file` | `VARCHAR` (metadata) | Original PDF filename |
+| `file_type` | `VARCHAR` (metadata) | Always `"pdf"` for uploaded documents |
+
+---
+
+## Key Features Deep Dive
+
+### 1. Hybrid RAG Pipeline
+
+The core intelligence of DocuIntel AI. When a user submits a question:
+
+1. The query is embedded using `gemini-embedding-2` (the same model used during ingestion, ensuring embedding space consistency).
+2. Milvus performs a top-`k` similarity search, returning the closest document chunks.
+3. Chunks are filtered by a configurable `similarity_threshold` (default: 0.75).
+4. If valid chunks exist, they are concatenated and injected into a structured prompt sent to **Gemini 2.5 Flash**.
+5. The model is strictly instructed to answer only from the provided context, and to respond with `INSUFFICIENT_CONTEXT` if it cannot.
+6. If `INSUFFICIENT_CONTEXT` is detected (in both sync and stream modes), the pipeline transparently falls back to **Gemini + Google Search grounding**, returning cited web sources.
+
+### 2. Real-Time Streaming with Typewriter Effect
+
+The streaming chat endpoint (`/api/chat/stream`) uses **Server-Sent Events (SSE)**. The frontend:
+- Maintains an internal text buffer that accumulates raw tokens from the SSE stream.
+- A `setInterval` typewriter reveals **3 characters every 20ms** (~150 chars/second) from the buffer.
+- This decouples network speed from display speed, ensuring smooth animation regardless of Gemini's token delivery rate.
+- Sources are emitted as a separate `sources` SSE event and are displayed as citations after the response completes.
+
+### 3. Background PDF Ingestion
+
+On upload, the PDF is immediately saved to disk and registered in SQLite with status `"processing"`. Indexing runs as a **FastAPI `BackgroundTask`**, which:
+1. Loads the PDF with `PyPDFLoader`.
+2. Splits it into **1,000-character chunks with 200-character overlap** using `RecursiveCharacterTextSplitter`.
+3. Tags each chunk with `doc_id`, `source_file`, and `file_type` metadata.
+4. Batch-adds all chunks to Milvus via `add_documents`.
+5. Updates the document status to `"completed"` or `"failed"` in SQLite.
+
+The frontend polls every **2 seconds** while any document is in `"processing"` state, then stops automatically.
+
+### 4. Singleton Resource Management
+
+The RAG service uses module-level singletons (`_embeddings`, `_vector_store`, `_chat_model`) initialized lazily on first use. This ensures:
+- Expensive model and connection initialization happens only **once per process**.
+- Subsequent requests reuse the same objects, dramatically reducing per-request latency.
+
+### 5. Configurable Retrieval
+
+Users can tune retrieval directly from the chat UI:
+- **`top_k`**: How many candidate chunks Milvus retrieves (default: 3 in UI). Higher values cast a wider net but increase context length.
+- **`similarity_threshold`**: The minimum cosine similarity required for a chunk to be considered relevant (default: 0.20 in UI). Lower values are more permissive; higher values are more selective.
+
+---
+
+## Screenshots
+
+> _Add screenshots of your running application here._
+
+| View | Screenshot |
+|------|-----------|
+| Dashboard (Upload & Manage) | ![Dashboard](screenshots/dashboard.png) |
+| Workspace Chat (Streaming) | ![Chat](screenshots/chat.png) |
+
+**To add screenshots:**
+1. Take screenshots of your running app.
+2. Save them to a `screenshots/` directory in the project root.
+3. Update the paths in the table above.
+
+---
+
+## Workflow
+
+End-to-end walkthrough of the application:
+
+```
+User Uploads PDF
+      │
+      ▼
+[Frontend] Validates: type=PDF, size≤50MB, drag-and-drop supported
+      │
+      ▼
+POST /api/documents/upload
+      │
+      ├─► [Backend] Validates PDF magic bytes (%PDF-) + page count
+      ├─► Saves file to ./uploads/ with sanitized filename
+      ├─► Creates DB record (status="processing")
+      └─► Fires BackgroundTask
+               │
+               ▼
+        Load PDF → Chunk (1k/200 overlap) → Embed → Index in Milvus
+               │
+               ▼
+        Update DB: status="completed" or "failed"
+
+[Frontend] Polls every 2s → live status badges (processing/completed/failed)
+
+─────────────────────────────────────────────────────────────────
+
+User Asks a Question
+      │
+      ▼
+POST /api/chat/stream
+      │
+      ▼
+[RAG Service]
+  ├─► Embed query with gemini-embedding-2
+  ├─► Similarity search in Milvus (top_k chunks)
+  ├─► Filter by similarity_threshold
+  │
+  ├─ CHUNKS FOUND?
+  │   YES ──► Build prompt → Stream Gemini 2.5 Flash
+  │               │
+  │         Model says INSUFFICIENT_CONTEXT?
+  │               └─► Fall back to Google Search grounding
+  │
+  └─ NO CHUNKS ──► Google Search grounding directly
+      │
+      ▼
+[SSE Stream]
+  → event: sources  (citations)
+  → event: chunk    (token, repeated)
+  → event: done     (stream complete)
+      │
+      ▼
+[Frontend] Typewriter reveals text + source citations displayed
+```
+
+---
+
+## Security Features
+
+| Feature | Implementation |
+|---------|---------------|
+| **File Type Validation** | Server-side check of PDF magic bytes (`%PDF-`) and page count via `pypdf` — prevents malicious file uploads. |
+| **File Size Enforcement** | Client validates ≤ 50 MB before upload; server validates actual byte length. |
+| **Filename Sanitization** | Uploaded filenames are sanitized to alphanumeric + `._-` characters before saving to disk. |
+| **CORS Configuration** | CORS middleware configured; `allow_origins` should be restricted to specific domains in production. |
+| **JWT Infrastructure** | `pyjwt` and `bcrypt` installed and ready for JWT authentication and password hashing integration. |
+| **Environment Secrets** | API keys and secrets loaded exclusively from environment variables via `python-dotenv` — never hardcoded. |
+| **Input Validation** | All API request bodies validated by Pydantic v2 schemas before any processing occurs. |
+| **SQL Injection Prevention** | All database queries use SQLAlchemy ORM — no raw SQL string interpolation. |
+| **Docker Isolation** | Services run in isolated containers with internal networking; only port 8000 is exposed externally. |
+
+---
+
+## Performance Optimizations
+
+| Optimization | Details |
+|-------------|---------|
+| **Singleton Models** | Embedding and chat models initialized once and reused, eliminating per-request cold starts. |
+| **Background Ingestion** | PDF indexing is non-blocking — upload returns immediately with HTTP 202. |
+| **Chunk Overlap** | 200-character overlap between 1,000-character chunks preserves cross-boundary context. |
+| **Similarity Filtering** | Pre-filtering chunks by threshold before LLM invocation reduces token usage and improves quality. |
+| **Streaming Responses** | SSE streaming delivers the first tokens immediately rather than waiting for the full response. |
+| **Typewriter Buffering** | Client-side typewriter decouples network jitter from animation smoothness. |
+| **Selective Polling** | Status polling is only active when documents are in `"processing"` state — stops automatically. |
+| **Docker Layer Caching** | `requirements.txt` and `package.json` are copied before source code to maximize cache hits on rebuilds. |
+| **Multi-Stage Docker Build** | Frontend is compiled in a Node.js stage; only `dist/` assets are copied to the final Python image. |
+| **Milvus Lite (Dev)** | Eliminates full Milvus cluster overhead during local development. |
+
+---
+
+## Error Handling
+
+The application implements a layered error handling strategy:
+
+**Backend:**
+- FastAPI `HTTPException` with semantic HTTP status codes (400, 404, 500) and descriptive detail messages for all API errors.
+- Background tasks (`process_and_index_pdf`, `delete_document_chunks`) catch all exceptions and update the document `status` to `"failed"` without crashing the server process.
+- The streaming generator catches exceptions and yields an `event: error` SSE event, ensuring the frontend always receives a signal even on failure.
+- `exc_info=True` is used on all `logger.error` calls to capture full stack traces.
+
+**Frontend:**
+- Upload errors display inline below the upload zone with a clear message.
+- Chat stream errors display a dismissible error panel containing the error code, message, timestamp, and original question for easy retry.
+- Document fetch errors are silently logged to avoid disrupting the UI.
+- SSE `onError` handlers cleanly remove the pending bot message placeholder before rendering the error state.
+
+---
+
+## Logging & Monitoring
+
+DocuIntel AI uses Python's standard `logging` module with structured, prefixed log messages.
+
+```
+Format: %(asctime)s - %(name)s - %(levelname)s - %(message)s
+Level:  INFO (default)
+```
+
+**Log prefixes by operation:**
+
+| Prefix | Operation |
+|--------|-----------|
+| `[INGESTION]` | PDF loading, chunking, and Milvus indexing |
+| `[DELETION]` | Vector chunk removal from Milvus |
+| `[RAG]` | Synchronous and streaming query execution |
+| `[CHAT]` | Chat router request handling |
+| `[CHAT_STREAM]` | Streaming chat request handling |
+| `[UPLOAD]` | Document upload validation and saving |
+| `[WEB_SEARCH]` | Gemini Google Search grounding fallback |
+
+**Example log output:**
+```
+2026-07-15 06:30:00 - backend.rag_service - INFO - [INGESTION] Starting - doc_id=42, file=report.pdf
+2026-07-15 06:30:05 - backend.rag_service - INFO - [INGESTION] Completed - doc_id=42, 87 chunks indexed
+2026-07-15 06:31:10 - backend.rag_service - INFO - [WEB_SEARCH] No valid chunks found, falling back to Google Search
+```
+
+> **Future:** Integrate with OpenTelemetry, Prometheus, or a managed logging service (Datadog, GCP Cloud Logging) for production observability.
+
+---
+
+## Testing
+
+### Running Tests
+
+> **Note:** Automated tests are planned — see [Roadmap](#roadmap).
+
+**Interactive API Testing (Swagger UI):**
+
+```bash
+# Start backend
+uvicorn backend.main:app --reload
+
+# Open in browser
+http://localhost:8000/docs
+```
+
+**Manual curl Testing:**
+
+```bash
+# Upload a document
+curl -X POST http://localhost:8000/api/documents/upload \
+  -F "file=@/path/to/document.pdf"
+
+# List all documents
+curl http://localhost:8000/api/documents
+
+# Chat (synchronous)
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Summarize this document", "top_k": 5, "similarity_threshold": 0.75}'
+
+# Delete a document
+curl -X DELETE http://localhost:8000/api/documents/1
+```
+
+**Frontend Linting:**
+
+```bash
+cd frontend
+npm run lint
+```
+
+---
+
+## Deployment
+
+### Docker Compose (Self-Hosted)
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env → set GOOGLE_API_KEY
+
+# 2. Build and deploy
+docker compose up --build -d
+
+# 3. Verify all services are healthy
+docker compose ps
+
+# 4. Check application logs
+docker compose logs -f rag-app
+```
+
+**Exposed ports:**
+
+| Service | Port | Access |
+|---------|------|--------|
+| RAG Application | `8000` | External |
+| Milvus gRPC | `19530` | Internal only |
+| MinIO Console | `9001` | Internal (expose for admin if needed) |
+| etcd | `2379` | Internal only |
+
+### Production Checklist
+
+- [ ] Place **Nginx or Traefik** in front of port 8000 for TLS termination.
+- [ ] Restrict `allow_origins` in `main.py` to your production domain.
+- [ ] Set a cryptographically secure `JWT_SECRET` environment variable.
+- [ ] Verify `uploads/` and `backend_data/` are volume-mounted for persistence.
+- [ ] For high traffic: replace SQLite with **PostgreSQL** and scale Milvus with a dedicated cluster.
+- [ ] Set up automated backups for the SQLite database and Milvus volumes.
+
+---
+
+## Roadmap
+
+- [x] PDF document upload with multi-layer validation
+- [x] Background PDF ingestion (chunking + embedding + indexing)
+- [x] Milvus vector store integration with similarity search
+- [x] Gemini 2.5 Flash answer generation
+- [x] Intelligent Google Search grounding fallback
+- [x] Streaming SSE chat with typewriter effect
+- [x] Source citations for all answers (document and web)
+- [x] Configurable `top_k` and `similarity_threshold`
+- [x] Document management (list, delete with vector cleanup)
+- [x] Docker Compose full-stack deployment
+- [x] Multi-stage Dockerfile (Node → Python)
+- [ ] User authentication (JWT login / registration)
+- [ ] Multi-user workspace isolation
+- [ ] Chat history persistence
+- [ ] Document tagging and search/filter
+- [ ] Automated unit and integration tests (pytest + vitest)
+- [ ] Support for additional file types (DOCX, TXT, Markdown)
+- [ ] Admin dashboard with usage analytics
+- [ ] OpenTelemetry / Prometheus monitoring
+- [ ] Kubernetes Helm chart for cloud-native deployment
+- [ ] Rate limiting and API key management
+
+---
+
+## Future Enhancements
+
+| Enhancement | Description |
+|------------|-------------|
+| **Multi-modal Support** | Extend ingestion to handle images and charts within PDFs using vision-capable models. |
+| **Re-ranking** | Add a cross-encoder re-ranking step after initial Milvus retrieval to improve answer precision. |
+| **Hybrid Search** | Combine dense vector search with BM25 keyword search for better recall on exact-match queries. |
+| **Document Versioning** | Support uploading updated document versions while preserving indexing history. |
+| **Collaborative Workspaces** | Multi-tenant architecture with shared document libraries and role-based access control. |
+| **Answer Confidence Scoring** | Surface a confidence indicator alongside answers derived from chunk similarity scores. |
+| **Streaming Ingestion Progress** | Stream real-time indexing progress to the frontend via WebSockets. |
+| **External Knowledge Connectors** | Plugin architecture to connect Confluence, Notion, or Google Drive as retrieval sources. |
+
+---
+
+## Contributing
+
+Contributions are welcome and appreciated! Please follow these guidelines:
+
+### Getting Started
+
+1. **Fork** the repository on GitHub.
+2. **Clone** your fork:
    ```bash
    git clone https://github.com/your-username/docuintel-ai.git
    cd docuintel-ai
    ```
-
-2. **Configure Environment Variables**:
-   Create a `.env` file in the root directory:
-   ```env
-   GOOGLE_API_KEY="AIzaSyYourGeminiApiKeyHere"
-   JWT_SECRET="generate-a-secure-random-string-for-sessions"
-   ```
-
-3. **Start the Multi-Container Stack**:
+3. **Create a feature branch** from `main`:
    ```bash
-   docker compose up --build
+   git checkout -b feat/your-feature-name
    ```
-   *The backend will automatically start database tables, and the application will be accessible at `http://localhost:8000` (or `http://localhost:5173` during local dev).*
+
+### Development Workflow
+
+4. Make your changes following the existing code style.
+5. **Lint your code** before committing:
+   ```bash
+   # Frontend
+   cd frontend && npm run lint
+
+   # Backend (add ruff/flake8 to requirements-dev.txt)
+   ruff check backend/
+   ```
+6. **Write or update tests** for your changes.
+7. **Commit** with a descriptive conventional message:
+   ```bash
+   git commit -m "feat: add DOCX file ingestion support"
+   ```
+8. **Push** to your fork and open a **Pull Request** against `main`.
+
+### Pull Request Guidelines
+
+- Provide a clear description of what your PR changes and why.
+- Reference related issues (e.g., `Closes #42`).
+- Keep PRs focused — one feature or fix per PR.
+- Ensure all CI checks pass before requesting review.
+
+### Commit Message Convention
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Prefix | When to use |
+|--------|-------------|
+| `feat:` | New features |
+| `fix:` | Bug fixes |
+| `docs:` | Documentation only changes |
+| `refactor:` | Code restructuring without behavior change |
+| `test:` | Adding or updating tests |
+| `chore:` | Build system or tooling changes |
 
 ---
 
-### Option 2: Local Development Mode (Run local server and dev client)
-For developers working without Docker, the application uses **Milvus Lite** locally, which stores vectors in a lightweight local DB file.
+## License
 
-#### Backend Setup:
-1. **Navigate to root and create a virtual environment**:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate      # Windows
-   source .venv/bin/activate    # macOS/Linux
-   ```
-
-2. **Install Python Packages**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set Environment Variables in Root `.env`**:
-   ```env
-   GOOGLE_API_KEY="AIzaSyYourGeminiApiKeyHere"
-   JWT_SECRET="your-development-jwt-secret-key"
-   MILVUS_HOST="localhost"
-   ```
-
-4. **Launch FastAPI Backend**:
-   ```bash
-   # Set PYTHONPATH to include the backend folder
-   set PYTHONPATH=backend
-   python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-   ```
-
-#### Frontend Setup:
-1. **Navigate to the frontend folder**:
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. **Launch Dev Client**:
-   ```bash
-   npm run dev
-   ```
-   *Open your browser to `http://localhost:5173/`.*
-
----
-
-## 🔑 Environment Variables
-
-| Variable | Scope | Purpose | Required | Example |
-| :--- | :--- | :--- | :--- | :--- |
-| `GOOGLE_API_KEY` | Backend | Connects to Gemini LLM & Embedding services | **Yes** | `AIzaSyA88_...` |
-| `JWT_SECRET` | Backend | Secret key used to sign session cookies/tokens | **Yes** | `d4e5f6g7h8...` |
-| `MILVUS_HOST` | Backend | Targets Milvus Host (use `localhost` for local/lite) | No | `milvus-standalone` |
-| `DATABASE_URL` | Backend | Database connection URL for user management | No | `sqlite:///./backend.db` |
-| `JWT_EXPIRE_MINUTES` | Backend | Expiration duration for session access tokens | No | `1440` (24 hours) |
-
----
-
-## 📘 Usage Guide
-
-1. **Create an Account**: Open the platform, click **Sign Up**, and register with your email and password.
-2. **Access Workspace**: Log in with your registered credentials.
-3. **Upload PDF**: On the **Dashboard**, drop any PDF file. The pipeline tracker will update you on the ingestion phases (Parsing ➔ Chunking ➔ Embedding ➔ Vector DB Indexing).
-4. **View Documents**: Navigate to the **Documents Viewer** to confirm that the file metadata is correctly parsed and marked as `Completed`.
-5. **Chat with Documents**: Head to **Workspace Chat**, type in questions, and click send. Review the returned text alongside the source files used to construct the answer.
-
----
-
-## 🤖 AI Pipeline Details
+This project is licensed under the **MIT License**.
 
 ```
-                                      Ingestion Pipeline
-┌──────────────┐      ┌─────────────┐      ┌─────────────────┐      ┌─────────────┐      ┌─────────────┐
-│ Uploaded PDF │ ───> │ PyPDFLoader │ ───> │ Text Splitter   │ ───> │ Embeddings  │ ───> │ Milvus DB   │
-│ (Max 50MB)   │      │ (Text layer)│      │ (1000/200 overlap)│    │ (1536-dim)  │      │ (Indexed)   │
-└──────────────┘      └─────────────┘      └─────────────────┘      └─────────────┘      └─────────────┘
+MIT License
+
+Copyright (c) 2026 DocuIntel AI Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
-1. **Document Loading**: Raw binary PDFs are read using `PyPDFLoader`, extracting clean text pages while logging structural attributes.
-2. **Text Chunking**: Standard text is divided into blocks of **1000 characters** with a **200 character overlap** using the `RecursiveCharacterTextSplitter`. This preserves semantics across borders.
-3. **Metadata Mapping**: Metadata elements (`user_id`, `doc_id`, `source_file`, `file_type`) are explicitly injected into each text block. This allows the backend to perform metadata-filtered search, ensuring users never see chunks from another user's files.
-4. **Embedding Generation**: Text chunks are passed to the `gemini-embedding-2` model, yielding highly dense **1536-dimensional** floating-point vectors.
-5. **Vector Indexing**: Chunks are stored in the Milvus vector store under the `my_documents` collection. Milvus handles indexing for low-latency searches.
-6. **Grounding & Retrieval**: During a chat query, the query string is converted to a vector. Milvus performs similarity matching (L2-normalized Euclidean distance).
-7. **Similarity Filtering**: Chunks are converted to a normalized range of `(0, 1]`. Chunks failing to meet the `Similarity Threshold` are dropped.
-8. **Generation / Fallback**: 
-   - **Grounded Mode**: The remaining chunks are formatted as a prompt context for `gemini-2.5-flash`.
-   - **General Mode**: If no chunks meet the threshold, the LLM falls back to general knowledge, returning a warning that the response was not found in the documents.
+---
+
+## Acknowledgements
+
+This project is built on excellent open-source work and powerful APIs:
+
+| Project / Service | Contribution |
+|-------------------|-------------|
+| [**LangChain**](https://github.com/langchain-ai/langchain) | Foundational RAG framework — document loading, text splitting, and LLM orchestration. |
+| [**Milvus**](https://milvus.io/) | World-class open-source vector database enabling fast, scalable similarity search. |
+| [**Google Gemini**](https://deepmind.google/technologies/gemini/) | State-of-the-art embedding model (`gemini-embedding-2`) and generative LLM (`gemini-2.5-flash`). |
+| [**FastAPI**](https://fastapi.tiangolo.com/) | High-performance Python web framework with automatic OpenAPI documentation. |
+| [**React**](https://react.dev/) | Declarative UI library powering the enterprise frontend. |
+| [**Vite**](https://vitejs.dev/) | Lightning-fast frontend build tooling. |
+| [**PyMilvus**](https://github.com/milvus-io/pymilvus) | Official Python SDK for Milvus. |
+| [**SQLAlchemy**](https://www.sqlalchemy.org/) | Robust Python ORM for relational database management. |
+| [**Lucide React**](https://lucide.dev/) | Beautiful, consistent open-source icon library. |
+| [**pypdf**](https://github.com/py-pdf/pypdf) | Pure-Python PDF reading and validation library. |
 
 ---
 
-## 🔌 API Documentation
+## Contact
 
-All endpoints are fully authenticated using standard Bearer token validation (`Authorization: Bearer <JWT>`).
+> **Maintainer:** Your Name
+> **Email:** your.email@example.com
+> **GitHub:** [@your-username](https://github.com/your-username)
+> **Project Repository:** [github.com/your-username/docuintel-ai](https://github.com/your-username/docuintel-ai)
 
-### Auth Endpoints
-
-#### 1. Register User
-* **Method**: `POST`
-* **Endpoint**: `/api/auth/register`
-* **Request Body**:
-  ```json
-  {
-    "email": "user@example.com",
-    "password": "strongpassword"
-  }
-  ```
-* **Success Response (201 Created)**:
-  ```json
-  {
-    "id": 1,
-    "email": "user@example.com",
-    "created_at": "2026-07-01T15:20:00"
-  }
-  ```
-* **Errors**: `400 Bad Request` if the email is already registered.
-
-#### 2. Obtain Token (Login)
-* **Method**: `POST`
-* **Endpoint**: `/api/auth/token`
-* **Content Type**: `application/x-www-form-urlencoded`
-* **Request Body**: `username=user@example.com&password=strongpassword`
-* **Success Response (200 OK)**:
-  ```json
-  {
-    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "token_type": "bearer"
-  }
-  ```
-* **Errors**: `401 Unauthorized` for incorrect email or password.
+**Found a bug?** → Open an [Issue](https://github.com/your-username/docuintel-ai/issues)
+**Have a question?** → Start a [Discussion](https://github.com/your-username/docuintel-ai/discussions)
 
 ---
 
-### Document Endpoints
+<div align="center">
 
-#### 3. Upload Document
-* **Method**: `POST`
-* **Endpoint**: `/api/documents/upload`
-* **Content Type**: `multipart/form-data`
-* **Form Data**: `file=@your_document.pdf`
-* **Success Response (202 Accepted)**:
-  ```json
-  {
-    "id": 5,
-    "filename": "Artificial_intelligence.pdf",
-    "file_size": 241868,
-    "upload_time": "2026-07-01T15:30:00",
-    "status": "processing"
-  }
-  ```
+Made with ❤️ and powered by Gemini AI
 
-#### 4. List Documents
-* **Method**: `GET`
-* **Endpoint**: `/api/documents`
-* **Success Response (200 OK)**:
-  ```json
-  [
-    {
-      "id": 5,
-      "filename": "Artificial_intelligence.pdf",
-      "file_size": 241868,
-      "upload_time": "2026-07-01T15:30:00",
-      "status": "completed"
-    }
-  ]
-  ```
+[⬆ Back to Top](#docuintel-ai-)
 
-#### 5. Delete Document
-* **Method**: `DELETE`
-* **Endpoint**: `/api/documents/{doc_id}`
-* **Success Response (200 OK)**:
-  ```json
-  {
-    "message": "Document deleted successfully"
-  }
-  ```
-
----
-
-### Chat Endpoint
-
-#### 6. Chat Query
-* **Method**: `POST`
-* **Endpoint**: `/api/chat`
-* **Request Body**:
-  ```json
-  {
-    "question": "what is ml?",
-    "top_k": 5,
-    "similarity_threshold": 0.50
-  }
-  ```
-* **Success Response (200 OK)**:
-  ```json
-  {
-    "source_type": "document",
-    "answer": "According to the uploaded documents, machine learning is...",
-    "sources": [
-      {
-        "content": "Machine Learning (ML) is a subset of AI...",
-        "source_file": "Artificial_intelligence.pdf",
-        "score": 0.8143
-      }
-    ]
-  }
-  ```
-
----
-
-## ⚙️ Configuration Settings
-
-The following parameters govern chunking, retrieval, and LLM processing:
-
-| Parameter | Location | Default Value | Tuning Impact |
-| :--- | :--- | :--- | :--- |
-| **Chunk Size** | `backend/rag_service.py` | `1000` characters | Controls context chunk size. Smaller sizes prevent embedding dilution; larger sizes preserve local coherence. |
-| **Chunk Overlap** | `backend/rag_service.py` | `200` characters | Overlapping sliding window keeps context at text transitions. |
-| **Top-K Chunks** | Chat UI / `/api/chat` | `5` | Specifies how many text segments are injected into the prompt. |
-| **Similarity Threshold** | Chat UI / `/api/chat` | `0.50` (or `0.75`) | Minimum similarity matching required before feeding chunks to Gemini. |
-| **Embedding Model** | `backend/rag_service.py` | `gemini-embedding-2` | Google's model for generating 1536-dimensional vectors. |
-| **Generative LLM** | `backend/rag_service.py` | `gemini-2.5-flash` | The foundation model executing inference. |
-
----
-
-## ⚡ Performance Optimizations
-
-* **Asynchronous PDF Processing**: Ingestion relies on `BackgroundTasks` to parse text and load vectors, preventing long client-side wait times on document uploads.
-* **CORS Preflight Caching**: Standard options permit cross-origin requests locally, optimizing Axios/Fetch handshakes.
-* **Docker Multi-Stage Build**: Keeps final production images lightweight by executing compilation in a separate builder container and copying only required distribution assets.
-* **Vector Index Query Isolation**: Relies on Milvus Boolean expressions (`expr="user_id == {user_id}"`) during search. This skips scanning the entire database, improving performance and ensuring multi-tenant security.
-
----
-
-## 🛡️ Error Handling
-
-- **Missing API Key**: The server checks for `GOOGLE_API_KEY` on boot. If it's missing, it fails fast with descriptive warnings.
-- **Empty PDF upload**: Files with 0-byte size are identified immediately and rejected with `400 Bad Request`.
-- **Invalid Extensions**: Non-PDF formats are intercepted at the route level, logging warnings and returning error payloads.
-- **No Document Match**: Under query execution, if retrieved chunks fail to pass similarity tests, the system falls back to general knowledge while returning a `-1.0` match score to prevent fake citation assignments.
-- **Milvus Connection Management**: Replaced standard Milvus collection handlers with an overridden connection helper (`Connections._fetch_handler`) to resolve ORM-like connection pool timeouts.
-
----
-
-## 🔒 Security Audit
-
-DocuIntel AI includes a **comprehensive system audit** resolving critical backend vulnerabilities:
-* **Multi-Tenant Document Privacy**: SQLite schemas store user-specific document mapping. Vector searches always include a `user_id` query constraint, making it impossible for a user to retrieve chunks from other users.
-* **Password Hashing**: Stored passwords use `Bcrypt` with salt generation, preventing plain-text storage leaks.
-* **OAuth2 Authentication**: Secure session access tokens are encoded using `PyJWT` with custom secret-key signing.
-* **MIME Validation**: Ingestion validates input file MIME headers (`application/pdf` and variants) to block malicious executables.
-
----
-
-## 🗺️ Future Improvements
-
-- [ ] **Multi-User Role-Based Access Control (RBAC)**: Custom permissions for admins, workspace creators, and view-only roles.
-- [ ] **Hybrid Search with Re-ranking**: Integrate BM25 sparse lexical search with dense vector searches, re-ranked via cross-encoders.
-- [ ] **LLM Answer Streaming**: Adopt Server-Sent Events (SSE) to stream answers chunk-by-chunk in real time.
-- [ ] **Graph RAG Integration**: Construct knowledge graphs from PDFs to capture structural relationships between entities.
-- [ ] **Conversational Memory**: Add Redis-based chat history to allow multi-turn dialogue within a workspace.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-1. **Fork the Repository** and create a feature branch (`git checkout -b feature/AmazingFeature`).
-2. **Commit changes** following conventional commit guidelines.
-3. **Open a Pull Request** describing your additions, tests run, and screenshot results.
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See the [LICENSE](LICENSE) file for more information.
-
----
-
-## 👤 Author
-
-**Amish Singh**
-
-* [GitHub](https://github.com/amishsingh2005)
-* [Email](mailto:amishsingh2005@gmail.com)
-
-*Developed as a high-fidelity showcase of enterprise Retrieval-Augmented Generation capabilities.*
+</div>
